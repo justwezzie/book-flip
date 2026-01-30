@@ -656,33 +656,12 @@ Food impacts me very differently, I have a higher sensetitu for food colorants a
 
       // Handle resize
       let resizeTimeout;
-      let lastWidth = window.innerWidth;
 
       $(window).on('resize', function() {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(function() {
-          const widthChange = Math.abs(window.innerWidth - lastWidth);
-          if (widthChange < 50) {
-            const size = getBookSize();
-            $flipbook.turn('size', size.width, size.height);
-            return;
-          }
-
-          lastWidth = window.innerWidth;
-          const currentPage = $flipbook.turn('page');
-
-          $flipbook.turn('destroy');
-          $flipbook.html(originalHTML);
-
-          handleTextOverflow();
-          initBook();
-
-          setTimeout(function() {
-            const totalPages = $flipbook.turn('pages');
-            const safePage = Math.min(currentPage, totalPages);
-            $flipbook.turn('page', safePage);
-            updateUI(safePage);
-          }, 100);
+          const size = getBookSize();
+          $flipbook.turn('size', size.width, size.height);
         }, 300);
       });
 
