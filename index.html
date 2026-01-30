@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Flip</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a1a;
+      font-family:'Ayuthaya', serif;
+    }
+    @font-face {
+      font-family: 'Ayuthaya';
+      src: url(/System/Library/Fonts/Supplemental/Ayuthaya.ttf);
+    }
+
+    .book-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 50px 80px;
+    }
+
+    /* #flipbook {
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    } */
+
+    #flipbook .turn-page {
+      background: linear-gradient(to left, #f5f0e6 0%, #fffef9 100%);
+    }
+
+    /* Hard cover styles */
+    #flipbook .hard {
+      background: linear-gradient(135deg, #5c64cf 0%, #34318b 50%, #1b1959 100%);
+      color: #5274d0;
+      box-shadow:
+        inset 0 0 50px rgba(0,0,0,0.3),
+        inset 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    #flipbook .front-cover {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0 5px 5px 0;
+      display: flex;
+      flex-direction: column;
+    }
+/* 
+    #flipbook .front-cover::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 15px;
+      height: 100%;
+      background: linear-gradient(to right,
+        rgba(0,0,0,0.4) 0%,
+        rgba(0,0,0,0.1) 50%,
+        transparent 100%);
+    } */
+
+    #flipbook .back-cover {
+      background: linear-gradient(135deg, #5c64cf 0%, #34318b 50%, #1b1959 100%);
+      border-radius: 5px 0 0 5px;
+    }
+
+    #flipbook .back-cover::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 15px;
+      height: 100%;
+      background: linear-gradient(to left,
+        rgba(0,0,0,0.4) 0%,
+        rgba(0,0,0,0.1) 50%,
+        transparent 100%);
+    }
+
+    #flipbook .hard h1 {
+      font-size: clamp(24px, 4vw, 48px);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      text-align: center;
+      padding: 20px;
+      display: inline;
+      font-family: 'futura', sans-serif;
+    }
+
+    .cover-name{
+      font-size: 14px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      text-align: center;
+      display: inline;
+       font-family: 'futura', sans-serif;
+    }
+
+    /* Regular page styles */
+    #flipbook .page {
+      background: linear-gradient(to left, #f5f0e6 0%, #fffef9 100%);
+      overflow: hidden;
+    }
+
+    #flipbook .page.odd {
+      background: linear-gradient(to right, #fffef9 0%, #f5f0e6 100%);
+    }
+
+    #flipbook .page.even {
+      background: linear-gradient(to left, #f5f0e6 0%, #fffef9 100%);
+    }
+
+    .page-wrapper {
+      width: 100%;
+      height: 100%;
+      padding: 20px 30px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-title {
+      font-size: clamp(16px, 2.1vw, 24px);
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+
+    .page-content {
+      font-size: clamp(12px, 1.5vw, 14px);
+      line-height: 1.5;
+      color: #444;
+      text-align: justify;
+      flex: 1;
+      overflow: hidden;
+    }
+    .image-details{
+      font-size: 8px;
+      line-height: 10px;
+      color: #888;
+      text-align: left;
+      margin-top: 0;
+      padding-bottom: 10px;
+    }
+
+    .page-number {
+      font-size: 10px;
+      color: #888;
+      text-align: center;
+      margin-top: auto;
+      padding-top: 20px;
+    }
+
+    .page-number.left {
+      text-align: right;
+    }
+
+    .page-number.right {
+      text-align: left;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+
+    .btn {
+      padding: 10px 25px;
+      font-size: 14px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .page-indicator {
+      position: fixed;
+      bottom: 70px;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      z-index: 100;
+    }
+/* 
+    Spine shadow when book is open
+    #flipbook.open::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%);
+      width: 30px;
+      height: 100%;
+      background: linear-gradient(to right,
+        rgba(0,0,0,0.2) 0%,
+        rgba(0,0,0,0.05) 40%,
+        rgba(0,0,0,0.05) 60%,
+        rgba(0,0,0,0.2) 100%);
+      pointer-events: none;
+      z-index: 1000;
+    } */
+
+    @media (max-width: 768px) {
+      .book-container {
+        padding: 20px 16px 100px;
+      }
+
+      .page-wrapper {
+        padding: 24px;
+      }
+
+      .page-title {
+        font-size: 20px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+      }
+
+      .page-content {
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .page-number {
+        font-size: 12px;
+      }
+
+      .controls {
+        bottom: 16px;
+        gap: 12px;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        font-size: 14px;
+      }
+
+      .page-indicator {
+        bottom: 70px;
+      }
+
+      #flipbook .front-cover {
+        border-radius: 0 5px 5px 0;
+      }
+
+      #flipbook .back-cover {
+        border-radius: 5px 0 0 5px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .book-container {
+        padding: 16px 12px 100px;
+      }
+
+      .page-wrapper {
+        padding: 20px;
+      }
+
+      .page-title {
+        font-size: 18px;
+      }
+
+      .page-content {
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .btn {
+        padding: 10px 18px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="book-container">
+    <div id="flipbook">
+      <!-- Front Cover (hard) -->
+      <div class="hard front-cover">
+        <h1>Life Interconnected Journal</h1>
+         <h2 class="cover-name">Wezzie Deborah Mbale</h2>
+
+      </div>
+
+      <!-- Page 1 -->
+      <div class="page odd">
+        <div class="page-wrapper">
+         
+          <p class="page-content" style="text-align: left; ">Unit 1: Introducing Biological Systems
+Submitted in partial fulfilment of the requirements for the degree of Master's in Biodesign
+2025/2026 Central Saint Martins UAL <br>
+Tutor: Dr Lorraine Archer</p>
+          <span class="page-number right">1</span>
+        </div>
+      </div>
+
+      <!-- Page 2 -->
+      <div class="page even">
+        <div class="page-wrapper">
+          <h2 class="page-title">Introduction</h2>
+          <p class="page-content">This multimedia journal is a collection of work exploring earth as a living system and the symbyosis on other living systems living on earth. A reoccuring motif is that of equilibrium. living systems have order and balance, when this order is disturbed irrespective of the impact of the disturbance, there is an equal opposing natural force.</p>
+          <span class="page-number left">2</span>
+        </div>
+      </div>
+
+      <!-- Page 3 -->
+      <div class="page odd">
+        <div class="page-wrapper">
+          <h2 class="page-title">Contents</h2>
+          <p class="page-content" style="line-height: 2.2;">
+Earth Systems and The Origins of Life <span style="float: right;">4</span><br>
+Biological Co-Emergence and Evolution <span style="float: right;">5</span><br>
+Making the Connection: Applying the Academic Method to Biodesign <span style="float: right;">6</span><br>
+How We Are Connected: Biochemical and Cognitive <span style="float: right;">7</span><br>
+How We Are Connected: Molecular, Epigenetic and Synbio <span style="float: right;">8</span><br>
+Bibliography <span style="float: right;">9</span>
+</p>
+          <span class="page-number right">3</span>
+        </div>
+      </div>
+
+      <!-- Page 4 -->
+      <div class="page even">
+        <div class="page-wrapper">
+          <h2 class="page-title">Earth Systems and The Origins of Life</h2>
+            <iframe src="https://juno.transient.xyz/recipe/36336233-e496-47e7-b09d-d92467bdf300/embed" style="width: 100%; aspect-ratio: 16/9; height: auto; border: none;" loading="lazy" allow="autoplay;encrypted-media;gyroscope;picture-in-picture;accelerometer;camera;microphone" allowfullscreen></iframe>
+          <p class="page-content"> <span class="image-details"> interact with the earth model by zooming in or rotating the globe </span> <br><br>
+            Earth is a complex system of interconnected biological, chemical, and physical processes. The planet's biosphere, atmosphere, hydrosphere, and geosphere work together to create conditions that support life. When i fully grasped the earth being its own system, i realised humans are minuscule in the greater system of living things. 
+
+My body is the first instance of autopoiesis that I spot,  it’s preparing itself every second, from injuries that are microscopic. When I think of the boys core function (keeping me alive) and I think about acne which for many people can cause anxiety, self confidence issues and even depression. It is really the body just protecting itself, its identified bacteria that shouldn’t be there and sent antibodies to push the bacteria out, which manifests as inflammation and a big red spot. This same principle can apply to  pretty much every ailment our body has. The body’s attempt in repair can be so inconvenient for us. 
+I think this mirrors the earth in a lot of ways, I see our pollution and waste as the bacteria in our skin, the earth as a consequence is slowly heating up. This could heat up to the point of extinction or natural selection could occur and some human could adapt whilst were a large population do not survive. Reducing humanity would indirectly reduce the pollution. 
+
+i’m connected to earth because I’m part of its system but I also mirror its system. There are many reinforcing and balancing loops that result in my body and the earth as individual living systems, that inconvenience me as a result of the both systems trying to sustain themselves.
+
+ </p>
+        
+          <span class="page-number left">4</span>
+        </div>
+      </div>
+
+      <!-- Page 5 -->
+      <div class="page odd">
+        <div class="page-wrapper">
+          <h2 class="page-title">Biological Co-Emergence and Evolution</h2>
+          <p class="page-content">Symbiosis. I think that ultimately all we want, successfully co-emergance with other living things. Humans co-emergant with plants when they release oxygen and we exhale carbon dioxide, I guess in one way we couldn’t live without one another. <img class="moveImageHere"> I have attached this note I created in labs which highlighted how systems create suger, which all living things need sugar. Plants are autotrophs and use carbon to create sugar, oxygen is a byproduct of the plants process. Humans and heterotrophs and have to use plants sugar, we also use the byproduct to survive (oxygen).  
+On a macro scale we experience co emergence everyday with each other. I find it so interesting how much more lonelier humans have become, we are so hyper independent. Community is so important and I see it a lot in my dad’s generation. Everyone wants a village but no one wants to be a villager, growing up, I used to mock my dad because he is everyone go to person for airport trips, I used to find it really annoying. It wasn’t until my dad surprise birthday party when people were doing speeches about how much they impacted their lives, I saw how many people volunteered their time, money and effort to make food, decorate and show up. It was one day but it really highlighted to me what being a villager looks like practically. It’s about inconvenience  yourself, going even when you don’t feel like it. Until that day I was always against leading with that approach because I think it’s so easy to be taken advantage of but so what? If one person takes advantage of you out of 20, so what? It reflect poorly on them that it does on me. The fear of being taken advantage of by people that quite frankly are awful shouldn’t stop me from living life as a cheerful villager.  But I think we are so much lonelier now, especially my generation, covid probably played a significant role in this, I can’t image 2 years of isolation impacted my generation negatively. The current climate of genocide, cost of living crisis and what feels like once in a life time event after once in a lifetime event, probably doesn’t help I think we’re exhausted. Well I’m exhausted. The social contract is broken, my generation can’t afford to buy homes, have children, I physically could not afford to go on maternity leave. Bars, clubs and pubs are going, I can barely afford to be a villager. So maybe the hyper independence has emergence as a coping mechanism for a whole generation.
+</p>
+          <span class="page-number right">5</span>
+        </div>
+      </div>
+
+      <!-- Page 6 -->
+      <div class="page even">
+        <div class="page-wrapper">
+          <h2 class="page-title">Making the Connection: Applying the Academic Method to Biodesign</h2>
+          <p class="page-content">A logbook would comprise of 4 sections: planning, experiment, data analysis and conclusion.
+<br><br>
+<b>Planning</b><br>
+The context and information for the experiment alongside a hypothesis. I would also plan out my experiment in this section, I would collate all the relevant studies and use them as a base to create a mythology. I would also write what my outcomes should be, and highlight steps that might have high points of error from any errors I may have identifies in the studies.
+<br><br>
+<b>Experiment</b><br>
+I would note every weight and measurement used, even if it's different from the plan. Note any changes I notice such as changes in colour, texture etc as well as any thoughts that cross my mind whilst conducting the experiment
+<br><br>
+<b>Data analysis</b><br>
+This is where I go my calculations from the data obtained during the experiment. I would map these out in and plot graphs to visually understand any possible trends
+<br><br>
+<b>Conclusion</b><br>
+Relating the data analysis to the initial hypothesis and discussing if the hypothesis was correct. If the data isn't as expected this is where I can explore why it did go as expected, maybe human error or other circumstance. I would also discuss how I would improve this, assuming the experiment can be iterated.</p>
+          <span class="page-number left">6</span>
+        </div>
+      </div>
+
+      <!-- Page 7 -->
+      <div class="page odd">
+        <div class="page-wrapper">
+          <h2 class="page-title"> How We Are Connected: Biochemical and Cognitive</h2>
+          <p class="page-content">
+ I feel like I discussed the chemical pathways in previous questions ( our relationship with plants) but to summarise, every breath I take is an act of interconnectedness. There are multiple natural cycles and pathways that are required to occur simultaneously to sustain the earth and all the living systems in that.
+</p>
+          <span class="page-number right">7</span>
+        </div>
+      </div>
+
+      <!-- Page 8 -->
+      <div class="page even">
+        <div class="page-wrapper">
+          <h2 class="page-title">How We Are Connected: Molecular, Epigenetic and Synbio</h2>
+          <iframe src="https://www.youtube.com/embed/0bSTqokjNEE" style="width: 100%; aspect-ratio: 16/9; height: auto; border: none;" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <p class="page-content">
+"You didn't fall out of a coconut tree"- Kamala Harris, we exist in the context of our environment.
+
+Being neurodiverse(ND),an inherited trait that makes me an anomaly in the broader context of humanity. ND symptoms may be cause by epigenetic and mean there are changes on a cellular level, which may explain the comorbilties found in ND people. I see the body as a system so the traits I exhibit results in me exhibiting other traits. for example ingesting caffeine makes sleepy when its is ordinarily used to keep someone alert.
+
+Food impacts me very differently, I have a higher sensetitu for food colorants and preservative. Due to the capitalist society we live in, for food Is being engineered  to last longer, so that's shops have less loses. And seeds are being engineered to be drought resistant and grow quicker. This technology could be helpful, but I believe that in changing one thing, there is another change that may or may not be aware off. The results on engineered food may not even reveal themselves for generations to come. Like lead or asbestos, they were normalised used decades later then science could prove the harm they were causing. My biggest issue with engineered food is that it is tested in the global south. Malawi, my home, is an agriculture heavy county, most people farm as a source of income but also food for themselves, but most seeds are hybrid seeds, simply because the climate has changed to much, it doesn't rain as consistently and predictable as It used to. No one can really predict the impact of hybrid seeds and I doubt most people care, if your options are starving or hybrid maize, the maize is the obvious option.
+</p>
+          <span class="page-number left">8</span>
+        </div>
+      </div>
+
+        <!-- Page 9 -->
+      <div class="page even">
+        <div class="page-wrapper">
+          <h2 class="page-title">Biblography</h2>
+          <p class="page-content"> </p>
+          <span class="page-number right">9</span>
+        </div>
+      </div>
+
+
+      <!-- Back Cover (hard) -->
+      <div class="hard back-cover"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="prevBtn">← Previous</button>
+      <button class="btn" id="nextBtn">Next →</button>
+    </div>
+    <div class="page-indicator">Page <span id="currentPage">Cover</span></div>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      const $flipbook = $('#flipbook');
+      const $prevBtn = $('#prevBtn');
+      const $nextBtn = $('#nextBtn');
+      const $currentPage = $('#currentPage');
+
+      const originalHTML = $flipbook.html();
+
+      function handleTextOverflow() {
+        const size = getBookSize();
+        const isMobile = window.innerWidth <= 768;
+        const pageWidth = isMobile ? size.width : size.width / 2;
+        const pageHeight = size.height;
+
+        $flipbook.css({ width: size.width, height: size.height, position: 'relative' });
+
+        const $pages = $flipbook.children('.page');
+
+        $pages.each(function(index) {
+          const $page = $(this);
+          $(this).css({ width: pageWidth, height: pageHeight, position: 'absolute', visibility: 'hidden' });
+        });
+
+        let changed = true;
+        while (changed) {
+          changed = false;
+          $flipbook.children('.page').each(function(index) {
+            const $page = $(this);
+            const $wrapper = $page.find('.page-wrapper');
+            const $content = $wrapper.find('.page-content');
+
+            if ($content.length === 0) return;
+            if ($page.data('overflow-processed')) return;
+
+            const contentEl = $content[0];
+            if (contentEl.scrollHeight <= contentEl.clientHeight) return;
+
+          const text = $content.html();
+          const words = text.split(/(\s+)/);
+          let fittingContent = '';
+          let overflowContent = '';
+
+          $content.html('');
+
+          for (let i = 0; i < words.length; i++) {
+            const testContent = fittingContent + words[i];
+            $content.html(testContent);
+
+            if (contentEl.scrollHeight > contentEl.clientHeight) {
+              overflowContent = words.slice(i).join('');
+              $content.html(fittingContent.trim());
+              break;
+            }
+            fittingContent = testContent;
+          }
+
+          if (overflowContent.trim()) {
+            const currentPageNum = $page.find('.page-number').text();
+            const isOdd = $page.hasClass('odd');
+            const newPageClass = isOdd ? 'even' : 'odd';
+            const newPageNumAlign = isOdd ? 'left' : 'right';
+            const nextPageNum = parseInt(currentPageNum) + 1;
+
+            const $newPage = $(`
+              <div class="page ${newPageClass}">
+                <div class="page-wrapper">
+                  <h2 class="page-title" style="border-bottom: none; color: #888; font-size: 0.9em;">(continued)</h2>
+                  <p class="page-content">${overflowContent.trim()}</p>
+                  <span class="page-number ${newPageNumAlign}">${nextPageNum}</span>
+                </div>
+              </div>
+            `);
+
+            $page.after($newPage);
+
+            $newPage.css({ width: pageWidth, height: pageHeight, position: 'absolute', visibility: 'hidden' });
+
+            $newPage.nextAll('.page').each(function() {
+              const $pageNum = $(this).find('.page-number');
+              const num = parseInt($pageNum.text());
+              if (!isNaN(num)) {
+                $pageNum.text(num + 1);
+              }
+              $(this).toggleClass('odd even');
+              $pageNum.toggleClass('left right');
+            });
+
+            $page.data('overflow-processed', true);
+            changed = true;
+          }
+          });
+        }
+
+        $flipbook.children('.page').css({ width: '', height: '', position: '', visibility: '' });
+        $flipbook.css({ width: '', height: '', position: '' });
+      }
+
+      function getBookSize() {
+        const container = $('.book-container');
+        const maxWidth = container.width() - 32;
+        const maxHeight = container.height() - 60;
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          const width = Math.min(maxWidth, 400);
+          const height = Math.min(maxHeight, width * 1.5);
+          return { width, height };
+        } else {
+          const width = Math.min(maxWidth, 900);
+          const height = Math.min(maxHeight, width * 0.7);
+          return { width, height };
+        }
+      }
+
+      function initBook() {
+        const size = getBookSize();
+        const isMobile = window.innerWidth <= 768;
+
+        $flipbook.turn({
+          width: size.width,
+          height: size.height,
+          autoCenter: true,
+          display: isMobile ? 'single' : 'double',
+          acceleration: true,
+          gradients: true,
+          elevation: 50,
+          when: {
+            start: function(event, pageObject, corner) {
+              // Add animation class during flip
+              $flipbook.addClass('flipping');
+            },
+            end: function(event, pageObject) {
+              $flipbook.removeClass('flipping');
+            },
+            turning: function(event, page, view) {
+              updateUI(page);
+            },
+            turned: function(event, page, view) {
+              updateUI(page);
+              // Add spine shadow class when book is open (not on covers)
+              const totalPages = $flipbook.turn('pages');
+              if (page > 1 && page < totalPages) {
+                $flipbook.addClass('open');
+              } else {
+                $flipbook.removeClass('open');
+              }
+            }
+          }
+        });
+
+        updateUI(1);
+      }
+
+      function updateUI(page) {
+        const totalPages = $flipbook.turn('pages');
+        const isMobile = window.innerWidth <= 768;
+        const contentPages = totalPages - 2; // Exclude covers
+
+        // Update page indicator
+        if (page === 1) {
+          $currentPage.text('Cover');
+        } else if (page >= totalPages) {
+          $currentPage.text('Back Cover');
+        } else {
+          const contentPage = page - 1;
+          if (isMobile) {
+            $currentPage.text(contentPage + ' of ' + contentPages);
+          } else {
+            const rightPage = Math.min(contentPage + 1, contentPages);
+            if (contentPage === rightPage || contentPage >= contentPages) {
+              $currentPage.text(contentPage + ' of ' + contentPages);
+            } else {
+              $currentPage.text(contentPage + '-' + rightPage + ' of ' + contentPages);
+            }
+          }
+        }
+
+        // Update buttons
+        $prevBtn.prop('disabled', page <= 1);
+        $nextBtn.prop('disabled', page >= totalPages);
+      }
+
+      $prevBtn.on('click', function() {
+        $flipbook.turn('previous');
+      });
+
+      $nextBtn.on('click', function() {
+        $flipbook.turn('next');
+      });
+
+      $(document).on('keydown', function(e) {
+        if (e.key === 'ArrowRight') {
+          $flipbook.turn('next');
+        } else if (e.key === 'ArrowLeft') {
+          $flipbook.turn('previous');
+        }
+      });
+
+      // Handle resize
+      let resizeTimeout;
+      let lastWidth = window.innerWidth;
+
+      $(window).on('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+          const widthChange = Math.abs(window.innerWidth - lastWidth);
+          if (widthChange < 50) {
+            const size = getBookSize();
+            $flipbook.turn('size', size.width, size.height);
+            return;
+          }
+
+          lastWidth = window.innerWidth;
+          const currentPage = $flipbook.turn('page');
+
+          $flipbook.turn('destroy');
+          $flipbook.html(originalHTML);
+
+          handleTextOverflow();
+          initBook();
+
+          setTimeout(function() {
+            const totalPages = $flipbook.turn('pages');
+            const safePage = Math.min(currentPage, totalPages);
+            $flipbook.turn('page', safePage);
+            updateUI(safePage);
+          }, 100);
+        }, 300);
+      });
+
+      handleTextOverflow();
+      initBook();
+    });
+  </script>
+</body>
+</html>
